@@ -42,7 +42,8 @@ x = np.array(x) # reduce speed of constructing tensor by making data a np array
 y = np.array(y)
 
 
-# defining dataset
+# wrapping dataset
+
 class dataset(Dataset):
 	def __init__(self, x, y):
 		self.x = torch.tensor(x, dtype=torch.float)
@@ -53,8 +54,10 @@ class dataset(Dataset):
 	def __len__(self):
 		return self.length
 
-trainset = dataset(x,y)
-trainloader = DataLoader(trainset, batch_size=64,shuffle=True)
+# trainset = dataset(x,y)
+# trainloader = DataLoader(trainset, batch_size=64,shuffle=True)
+
+# defining the model class
 
 class Net(nn.Module):
 	def __init__(self, input_shape):
@@ -72,5 +75,31 @@ class Net(nn.Module):
 		x = torch.sigmoid(self.fc3(x))
 		return x
 
-net = Net(x.shape)
-print(Net)
+# net = Net(x.shape[1])
+# print(net)
+# x = torch.tensor(x, dtype=torch.float)
+# print(x.shape)
+# net(x) # forward
+
+# TODO:
+# batch training, the go to mini batch training
+# do batch training with the data loader later
+
+# hyperparameters
+
+learning_rate = 0.01
+epochs = 700
+
+# model, data, optimizer, loss
+
+model = Net(x.shape[1])
+x = torch.tensor(x, dtype=torch.float) # features [x1,x2]
+y = torch.tensor(y, dtype=torch.bool) # labels True/False
+optimizer = rotch.optim.SGD(model.parameters(), lr=learning_rate) # stochastic gradient descent
+loss = nn.BCELoss() # binary cross entropy loss
+
+# training
+
+losses = []
+accur = []
+# ... tbc
