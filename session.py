@@ -21,6 +21,9 @@ duration -- recording length in seconds
 
 session_data = open('hc3-session.csv')
 
+header = ['id', 'topdir', 'session', 'behavior', 'familiarity', 'duration']
+
+print(header)
 
 csvreader = csv.reader(session_data)
 
@@ -28,4 +31,7 @@ rows = []
 for row in csvreader:
 	rows.append(row)
 	print(row)
-	break
+
+print(rows)
+
+session_data.close()
