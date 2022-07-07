@@ -87,26 +87,22 @@ def convert_to_one_hot(val, n, categories=None):
 
 rows = []
 
-# max size of the one hot encoded data, for use turning all the entries into tensors of the same length
-MAX_LENGTH = 16
-
-filler_tensor = torch.zeros(MAX_LENGTH-1, dtype=float)
-
-def num_to_tensor(input):
-	return torch.cat((torch.tensor([float(input)]), filler_tensor),0)
 
 for row in csvreader:
-	# TODO: tranpose the one hot encoding and concat wiith the other data so we add dimensions to the input but end up with a tensor of floats
-	# then standardize the floats
+
+	transformed_data = []
+
+	# TODO: tranpose the one hot encoding and concat with the other data so we add dimensions to the input but end up with a tensor of floats
+	# then standardize the floats after the fact
 	row = row[2:] # remove unhelpful label data
 	# animal (string) -> OHE
-	row[0] = convert_to_one_hot(row[0], MAX_LENGTH, ('ec012','ec013','ec014','ec016','f01_m','g01_m','gor01','i01_m','j01_m','pin01','vvp01'))
+	row[0] = convert_to_one_hot(row[0], 11, ('ec012','ec013','ec014','ec016','f01_m','g01_m','gor01','i01_m','j01_m','pin01','vvp01'))
 	# electrode (int) -> OHE
-	row[1] = convert_to_one_hot(int(row[1])-1, MAX_LENGTH)
+	row[1] = convert_to_one_hot(int(row[1])-1, 16)
 	# CLU -> float
 	row[2] = num_to_tensor(row[2])
 	# region (string) -> OHE
-	row[3] = convert_to_one_hot(row[3], MAX_LENGTH, ('EC2','EC3','EC4','EC5','EC?','CA1','CA3','DG','Unknown'))
+	row[3] = convert_to_one_hot(row[3], 9, ('EC2','EC3','EC4','EC5','EC?','CA1','CA3','DG','Unknown'))
 	# cell number values -> floats
 	row[4] = num_to_tensor(row[4])
 	row[5] = num_to_tensor(row[5])
@@ -117,7 +113,7 @@ for row in csvreader:
 	row[10] = num_to_tensor(row[10])
 	row[11] = num_to_tensor(row[11])
 	# cellType -> OHE
-	row[12] = convert_to_one_hot(row[12], MAX_LENGTH, ('i','p','n'))
+	row[12] = convert_to_one_hot(row[12], 3, ('i','p','n'))
 	rows.append(row)
 
 # print(rows)
