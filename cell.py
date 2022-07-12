@@ -158,16 +158,28 @@ for row in csvreader:
     all_indices_tracked = True
     rows.append(transformed_data)
 
+cell_data.close()
+
 input_data = torch.hstack(rows)
 
-print(input_data.shape)
-print(indices_to_standardize)
+print(input_data)
+
+# iterate over the float (not one hot encoded data) and standardize using z-score
+# z = (x - u) / s
+for i in indices_to_standardize:
+
+    # convert to numpy array to perform transformation
+    altered_row = input_data[i].numpy().reshape(1,-1).transpose()
+
+    # standard scalar in order to convert to z score
+    scale = prep.StandardScaler()
+    scale.fit(altered_row)
+    altered_row = scale.transform(altered_row).transpose()
+
+    # redefine the original data as a tensor of the z-score data
+    input_data[i] = torch.tensor(altered_row, dtype=float)
 
 
-# data_tensor = torch.tensor(rows)
+print(input_data)
 
-# print(header)
-# print(data_tensor.shape)
-
-cell_data.close()
 
