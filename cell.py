@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import sklearn.preprocessing as prep
 import torch
+import math
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -103,6 +104,10 @@ for row in csvreader:
     # then standardize the floats after the fact
     
     row = row[2:] # remove unhelpful label data
+
+    if 'NaN' in row:
+        # filter out rows with incomplete data
+        continue
     
     # animal (string) -> OHE
     animal_ohe = convert_to_one_hot(row[0], 11, ('ec012','ec013','ec014','ec016','f01_m','g01_m','gor01','i01_m','j01_m','pin01','vvp01'))
@@ -207,27 +212,35 @@ output_dims = output_label.shape[1]
 # print(output_label.dtype)
 
 model = torch.nn.Sequential(
-    torch.nn.Linear(input_dims,10),
-    torch.nn.Linear(10,5),
+    torch.nn.Linear(input_dims,100),
+    # torch.nn.LayerNorm(10),
+    torch.nn.ReLU(),
+    torch.nn.Linear(100,5),
+    # torch.nn.LayerNorm(5),
+    torch.nn.ReLU(),
     torch.nn.Linear(5,output_dims),
+    # torch.nn.LayerNorm(output_dims),
     # torch.nn.ReLU(),
-    torch.nn.LogSoftmax(0)
+    torch.nn.Softmax(dim=1) # sigmoid?
 )
 
-loss_fn = torch.nn.CrossEntropyLoss()
+loss_fn = torch.nn.MSELoss() 
 
-learning_rate = 1e-10
+learning_rate = 1e-6
 for t in range(2000):
     y_pred = model(input_data.float())
     loss = loss_fn(y_pred, output_label)
+    # break
+
+    # loss = loss_fn(y_pred.transpose(-1,0), output_label.transpose(-1,0))
     if t % 100 == 99:
         print(y_pred.transpose(-1,0))
         print(output_label.transpose(-1,0))
         print(t, loss.item())
-        print('--------')
+        # print('--------')
     model.zero_grad() # Zero the gradients before running the backward pass.
     loss.backward()
     with torch.no_grad():
         for param in model.parameters():
             param -= learning_rate * param.grad
-print('linear_layer', model[0])
+# print('linear_layer', model[0])
