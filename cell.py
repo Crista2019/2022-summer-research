@@ -99,6 +99,7 @@ all_indices_tracked = False
 
 for row in csvreader:
     transformed_data = [] # initialize variable (will be replaced by tensor then concatenated)
+    label = []
 
     # TODO: tranpose the one hot encoding and concat with the other data so we add dimensions to the input but end up with a tensor of floats
     # then standardize the floats after the fact
@@ -162,27 +163,28 @@ for row in csvreader:
     cell_ohe = convert_to_one_hot(row[12], 3, ('i','p','n'))
     # replace one hot encoding with index of encoded value for NLLLoss: e.g. [0, 0, 1, 0] -> [2]
     # https://stackoverflow.com/questions/66635987/how-to-solve-this-pytorch-runtimeerror-1d-target-tensor-expected-multi-target
-    cell_ohe = cell_ohe[0].nonzero()[0]
-    output.append(cell_ohe)
+    # cell_ohe = cell_ohe[0].nonzero()[0]
+    # output.append(cell_ohe)
+    label = torch.transpose(cell_ohe,0,1)
 
     all_indices_tracked = True
     rows.append(transformed_data)
+    output.append(label)
 
 cell_data.close()
 
 input_data = torch.hstack(rows) 
 
 # classification for cell type
-output_label = torch.vstack(output).float() # each row contains the one hot encoding for the type of cell per subject
+output_label = torch.hstack(output).float().transpose(-1,0) # each row contains the one hot encoding for the type of cell per subject
 
+# print('interneuron count:', sum(output_label.transpose(-1,0)[-3].numpy(),1))
+# print('pyrimidal count:', sum(output_label.transpose(-1,0)[-2].numpy(),1))
+# print('not defined:', sum(output_label.transpose(-1,0)[-1].numpy(),1))
 
-# print('interneuron count:', sum(output_label[-3].numpy(),1))
-# print('pyrimidal count:', sum(output_label[-2].numpy(),1))
-# print('not defined:', sum(output_label[-1].numpy(),1))
-
-# interneuron count: 1132.0
-# pyrimidal count: 6100.0
-# not defined: 504.0
+# interneuron count: 1133.0
+# pyrimidal count: 6096.0
+# not defined: 495.0
 
 # iterate over the float (not one hot encoded data) and standardize using z-score
 # z = (x - u) / s
@@ -213,20 +215,17 @@ output_dims = output_label.shape[1]
 
 model = torch.nn.Sequential(
     torch.nn.Linear(input_dims,100),
-    # torch.nn.LayerNorm(10),
-    torch.nn.ReLU(),
-    torch.nn.Linear(100,5),
-    # torch.nn.LayerNorm(5),
+    torch.nn.Linear(100,50),
+    torch.nn.Linear(50,64),
+    torch.nn.Linear(64,5),
     torch.nn.ReLU(),
     torch.nn.Linear(5,output_dims),
-    # torch.nn.LayerNorm(output_dims),
-    # torch.nn.ReLU(),
     torch.nn.Softmax(dim=1) # sigmoid?
 )
 
-loss_fn = torch.nn.MSELoss() 
+loss_fn = torch.nn.CrossEntropyLoss() 
 
-learning_rate = 1e-6
+learning_rate = 1e-3
 for t in range(2000):
     y_pred = model(input_data.float())
     loss = loss_fn(y_pred, output_label)
