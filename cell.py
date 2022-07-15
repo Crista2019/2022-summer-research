@@ -1,10 +1,10 @@
-import matplotlib
+import matplotlib.pyplot as plt
 import csv
 import numpy as np
 import sklearn.preprocessing as prep
+import sklearn.model_selection as ms
 import torch
 import math
-import torch.nn as nn
 import torch.nn.functional as F
 
 """
@@ -161,10 +161,6 @@ for row in csvreader:
     
     # cellType -> OHE
     cell_ohe = convert_to_one_hot(row[12], 3, ('i','p','n'))
-    # replace one hot encoding with index of encoded value for NLLLoss: e.g. [0, 0, 1, 0] -> [2]
-    # https://stackoverflow.com/questions/66635987/how-to-solve-this-pytorch-runtimeerror-1d-target-tensor-expected-multi-target
-    # cell_ohe = cell_ohe[0].nonzero()[0]
-    # output.append(cell_ohe)
     label = torch.transpose(cell_ohe,0,1)
 
     all_indices_tracked = True
@@ -203,6 +199,9 @@ for i in indices_to_standardize:
 
 input_data = input_data.transpose(-1,0) # where each row is a different subject and each column is an input feature
 
+# divide into 70% train and 30% train
+x_train, x_test, y_train, y_test = ms.train_test_split(input_data, output_label, test_size=0.3, shuffle=False)
+
 # start of the neural network
 
 input_dims = input_data.shape[1]
@@ -214,32 +213,114 @@ output_dims = output_label.shape[1]
 # print(output_label.dtype)
 
 model = torch.nn.Sequential(
-    torch.nn.Linear(input_dims,100),
-    torch.nn.Linear(100,50),
-    torch.nn.Linear(50,64),
-    torch.nn.Linear(64,5),
+    torch.nn.Linear(input_dims,64),
+    torch.nn.ReLU(),
+    torch.nn.Linear(64,10),
+    torch.nn.ReLU(),
+    torch.nn.ReLU(),
+    torch.nn.ReLU(),
+    torch.nn.Linear(10,5),
     torch.nn.ReLU(),
     torch.nn.Linear(5,output_dims),
     torch.nn.Softmax(dim=1) # sigmoid?
 )
 
+learning_rate = 1e-2
 loss_fn = torch.nn.CrossEntropyLoss() 
 
-learning_rate = 1e-3
-for t in range(2000):
-    y_pred = model(input_data.float())
-    loss = loss_fn(y_pred, output_label)
-    # break
+#TODO plot loss, divide and plot for test and training, 
 
-    # loss = loss_fn(y_pred.transpose(-1,0), output_label.transpose(-1,0))
-    if t % 100 == 99:
-        print(y_pred.transpose(-1,0))
-        print(output_label.transpose(-1,0))
-        print(t, loss.item())
-        # print('--------')
-    model.zero_grad() # Zero the gradients before running the backward pass.
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9) # .626
+# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+losses = []
+
+# training step
+model.train()
+
+for t in range(10000):
+
+    # zero gradients 
+    optimizer.zero_grad()
+
+    # make predictions
+    y_pred = model(x_train.float())   
+
+    # compute loss and its gradients
+    loss = loss_fn(y_pred, y_train) 
     loss.backward()
-    with torch.no_grad():
-        for param in model.parameters():
-            param -= learning_rate * param.grad
-# print('linear_layer', model[0])
+
+    # adjust learning weights
+    optimizer.step()
+
+    losses.append(loss.item())
+
+    # if t % 100 == 0:
+    #     print(y_pred)
+    #     print(y_train)
+    #     print(t, loss.item())
+    if t == 19999:
+        print(t, loss.item())
+        # for i in range(x_train.shape[0]):
+            # print(y_pred[i])
+            # print(output_label[i])
+            # print('------')
+# print(losses)
+# plot the losses
+fig1, ax1 = plt.subplots()
+ax1.set_title('Training Loss')
+ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Loss')
+ax1.scatter(np.arange(len(losses)),losses)
+# plt.tight_layout()
+plt.show()
+
+def decipher_class(input_data, offset=False):
+    """
+    input: a dataset of type float tensor in form: [[0.,0.,1.],[0.00002,1.00,0.008],...]
+    output: a numpy array containing floats of the argmax index of the input: [2,1,...]
+    if offset is set to true, an offset will be applied to avoid overlapping ticks for graphs
+    """
+    output_data = []
+    for row in input_data:
+        class_num = np.argmax(row)
+        if offset:
+            output_data.append(class_num.item()+.1) # will add .1 offset
+        else:
+            output_data.append(class_num.item())
+    return np.array(output_data)
+
+#  testing step
+model.eval()
+with torch.no_grad():
+    out_data = model(x_test.float())
+    predicted_class = decipher_class(out_data, True)
+    expected_class = decipher_class(y_test)
+
+    correct_x = []
+    correct_y = []
+    wrong_x = []
+    wrong_y = []
+    for i in range(predicted_class.shape[0]):
+        # account for the offset!
+        if predicted_class[i]-.1 == expected_class[i]:
+            correct_x.append(i)
+            correct_y.append(predicted_class[i])
+        else:
+            wrong_x.append(i)
+            wrong_y.append(predicted_class[i])
+
+    accuracy = len(correct_x)/predicted_class.shape[0]
+    print('test accuracy:',accuracy)
+
+    fig2, ax2 = plt.subplots(figsize=(15,4))
+    ax2.set_title('Classification Accuracy')
+    ax2.set_xlabel('Cell')
+    ax2.set_ylabel('Predicted Class')
+    ax2.scatter(np.arange(predicted_class.shape[0]), expected_class, color='black', marker='|', alpha=.3, label='expected class')
+    ax2.scatter(np.array(correct_x), np.array(correct_y), color='green', marker='|', alpha=.3, label='correctly classified by model')
+    ax2.scatter(np.array(wrong_x), np.array(wrong_y), color='red', marker='|', alpha=.3, label='incorrectly classified by model')
+    plt.legend(bbox_to_anchor=(.8,.6))
+    plt.tight_layout()
+    plt.show()
+    # plt.savefig()
