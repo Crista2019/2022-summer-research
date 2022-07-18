@@ -3,6 +3,8 @@ import csv
 import numpy as np
 import sklearn.preprocessing as prep
 import sklearn.model_selection as ms
+import sklearn.discriminant_analysis as discrim
+import sklearn.metrics as met
 import torch
 import math
 import torch.nn.functional as F
@@ -294,33 +296,85 @@ def decipher_class(input_data, offset=False):
 model.eval()
 with torch.no_grad():
     out_data = model(x_test.float())
-    predicted_class = decipher_class(out_data, True)
+
+
+    # discrimination histogram graphing
+    fig2, ax2 = plt.subplots() # graph all 3 next to each other
+
+    dat = out_data[:,2]
+    one = y_test[:,2] == 0
+    two = y_test[:,2] == 1
+    three = y_test[:,2] == 2
+    interneurons = dat[one].detach().numpy().flatten()
+    pyramidal = dat[two].detach().numpy().flatten()
+    misk = dat[three].detach().numpy().flatten()
+    n_bkg, bins_bkg, patches_bkg = plt.hist(interneurons, bins=8, 
+                                                range=[0,1], label='interneurons', 
+                                                density=True)
+    n_bkg, bins_bkg, patches_bkg = plt.hist(pyramidal, bins=8, 
+                                                range=[0,1], label='pyramidal', 
+                                                linewidth=1.7, histtype=u'step', 
+                                                density=True)
+    n_sig, bins_sig, patches_sig = plt.hist(misk, bins=8, 
+                                            range=[0,1], label='misk',
+                                            linewidth=2, histtype=u'step', 
+                                            density=True)
+    plt.legend()
+    plt.show()
+
+    # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
+    predicted_class_w_offset = decipher_class(out_data, True)
+    predicted_class = decipher_class(out_data)
     expected_class = decipher_class(y_test)
 
+    # test accuracy
+    print('BALANCED ACCURACY:',met.balanced_accuracy_score(expected_class,predicted_class))
+
     correct_x = []
-    correct_y = []
+    correct_y_w_offset = []
     wrong_x = []
-    wrong_y = []
+    wrong_y_w_offset = []
     for i in range(predicted_class.shape[0]):
         # account for the offset!
-        if predicted_class[i]-.1 == expected_class[i]:
+        if predicted_class[i] == expected_class[i]:
             correct_x.append(i)
-            correct_y.append(predicted_class[i])
+            correct_y_w_offset.append(predicted_class_w_offset[i])
         else:
             wrong_x.append(i)
-            wrong_y.append(predicted_class[i])
+            wrong_y_w_offset.append(predicted_class_w_offset[i])
 
-    accuracy = len(correct_x)/predicted_class.shape[0]
-    print('test accuracy:',accuracy)
+    # raw, unbalanced accuracy
+    # accuracy = len(correct_x)/predicted_class.shape[0]
+    # print('test accuracy:',accuracy)
 
-    fig2, ax2 = plt.subplots(figsize=(15,4))
-    ax2.set_title('Classification Accuracy')
-    ax2.set_xlabel('Cell')
-    ax2.set_ylabel('Predicted Class')
-    ax2.scatter(np.arange(predicted_class.shape[0]), expected_class, color='black', marker='|', alpha=.3, label='expected class')
-    ax2.scatter(np.array(correct_x), np.array(correct_y), color='green', marker='|', alpha=.3, label='correctly classified by model')
-    ax2.scatter(np.array(wrong_x), np.array(wrong_y), color='red', marker='|', alpha=.3, label='incorrectly classified by model')
+    fig3, ax3 = plt.subplots(figsize=(15,4))
+    ax3.set_title('Classification Accuracy')
+    ax3.set_xlabel('Cell')
+    ax3.set_ylabel('Predicted Class')
+    ax3.scatter(np.arange(expected_class.shape[0]), expected_class, color='black', marker='|', alpha=.3, label='expected class')
+    ax3.scatter(np.array(correct_x), np.array(correct_y_w_offset), color='green', marker='|', alpha=.3, label='correctly classified by model')
+    ax3.scatter(np.array(wrong_x), np.array(wrong_y_w_offset), color='red', marker='|', alpha=.3, label='incorrectly classified by model')
     plt.legend(bbox_to_anchor=(.8,.6))
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     # plt.savefig()
+
+    # Discriminant Analysis
+    X = x_test
+    y = expected_class
+    target_names = ['interneuron','pyramidal','not identified']
+
+    analysis = discrim.LinearDiscriminantAnalysis()
+    data_plot = analysis.fit(X,y).transform(X)
+
+    # create LDA plot
+    plt.figure()
+    colors = ['red','blue','green']
+    lw = 2
+
+    # plotting
+    for color, i, target_name in zip(colors, [0,1,2], target_names):
+        plt.scatter(data_plot[y==i,0], data_plot[y==i,1],alpha=.8,color=color,label=target_name)
+    plt.legend(loc='best',shadow=False,scatterpoints=1)
+
+    plt.show()
