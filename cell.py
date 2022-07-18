@@ -275,7 +275,7 @@ ax1.set_xlabel('Epoch')
 ax1.set_ylabel('Loss')
 ax1.scatter(np.arange(len(losses)),losses)
 # plt.tight_layout()
-plt.show()
+# plt.show()
 
 def decipher_class(input_data, offset=False):
     """
@@ -297,29 +297,58 @@ model.eval()
 with torch.no_grad():
     out_data = model(x_test.float())
 
-
     # discrimination histogram graphing
-    fig2, ax2 = plt.subplots() # graph all 3 next to each other
+    fig2, ax2 = plt.subplots(3) # graph all 3 next to each other
 
-    dat = out_data[:,2]
-    one = y_test[:,2] == 0
-    two = y_test[:,2] == 1
-    three = y_test[:,2] == 2
-    interneurons = dat[one].detach().numpy().flatten()
-    pyramidal = dat[two].detach().numpy().flatten()
-    misk = dat[three].detach().numpy().flatten()
-    n_bkg, bins_bkg, patches_bkg = plt.hist(interneurons, bins=8, 
-                                                range=[0,1], label='interneurons', 
-                                                density=True)
-    n_bkg, bins_bkg, patches_bkg = plt.hist(pyramidal, bins=8, 
-                                                range=[0,1], label='pyramidal', 
-                                                linewidth=1.7, histtype=u'step', 
-                                                density=True)
-    n_sig, bins_sig, patches_sig = plt.hist(misk, bins=8, 
-                                            range=[0,1], label='misk',
-                                            linewidth=2, histtype=u'step', 
-                                            density=True)
-    plt.legend()
+    # discrimination plot for class 0: interneurons
+    class_0 = out_data[:,0]
+    c0_labeled0 = y_test[:,0] == 0
+    c0_labeled1 = y_test[:,0] == 1
+    c0_labeled2 = y_test[:,0] == 2
+    interneurons = class_0[c0_labeled0].detach().numpy().flatten()
+    pyramidal = class_0[c0_labeled1].detach().numpy().flatten()
+    unlabeled = class_0[c0_labeled2].detach().numpy().flatten()
+
+
+    ax2[0].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True)
+    ax2[0].hist(pyramidal, bins=8, range=[0,1], label='pyramidal', density=True)
+    ax2[0].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True)
+    ax2[0].set_title('Interneuron Discrimination Plot')
+    ax2[0].legend(bbox_to_anchor=(1.5,.6))
+
+    # discrimination plot for class 1: pyramidal cells
+    class_1 = out_data[:,1]
+    c1_labeled0 = y_test[:,1] == 0
+    c1_labeled1 = y_test[:,1] == 1
+    c1_labeled2 = y_test[:,1] == 2
+    interneurons = class_1[c1_labeled0].detach().numpy().flatten()
+    pyramidal = class_1[c1_labeled1].detach().numpy().flatten()
+    unlabeled = class_1[c1_labeled2].detach().numpy().flatten()
+
+
+    ax2[1].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True)
+    ax2[1].hist(pyramidal, bins=8, range=[0,1], label='pyramidal', density=True)
+    ax2[1].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True)
+    ax2[1].set_title('Pyramidal Cell Discrimination Plot')
+    ax2[1].legend(bbox_to_anchor=(1.5,.6))
+
+    # discrimination plot for class 1: pyramidal cells
+    class_2 = out_data[:,2]
+    c2_labeled0 = y_test[:,2] == 0
+    c2_labeled1 = y_test[:,2] == 1
+    c2_labeled2 = y_test[:,2] == 2
+    interneurons = class_2[c2_labeled0].detach().numpy().flatten()
+    pyramidal = class_2[c2_labeled1].detach().numpy().flatten()
+    unlabeled = class_2[c2_labeled2].detach().numpy().flatten()
+
+
+    ax2[2].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True)
+    ax2[2].hist(pyramidal, bins=8, range=[0,1], label='pyramidal', density=True)
+    ax2[2].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True)
+    ax2[2].set_title('Unlabeled Cell Discrimination Plot')
+    ax2[2].legend(bbox_to_anchor=(1.5,.6))
+
+    plt.tight_layout()
     plt.show()
 
     # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
