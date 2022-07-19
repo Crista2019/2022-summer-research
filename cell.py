@@ -1,3 +1,6 @@
+# import matplotlib
+# matplotlib.use('TKAgg')
+
 import matplotlib.pyplot as plt
 import csv
 import numpy as np
@@ -314,7 +317,7 @@ with torch.no_grad():
 
     ax2[0].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True)
     ax2[0].hist(pyramidal, bins=8, range=[0,1], label='pyramidal', density=True)
-    ax2[0].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True)
+    ax2[0].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True, alpha=0.5)
     ax2[0].set_title('Interneuron Discrimination Plot')
     ax2[0].legend(bbox_to_anchor=(1.5,.6))
 
@@ -330,7 +333,7 @@ with torch.no_grad():
 
     ax2[1].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True)
     ax2[1].hist(pyramidal, bins=8, range=[0,1], label='pyramidal', density=True)
-    ax2[1].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True)
+    ax2[1].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True, alpha=0.5)
     ax2[1].set_title('Pyramidal Cell Discrimination Plot')
     ax2[1].legend(bbox_to_anchor=(1.5,.6))
 
@@ -346,12 +349,13 @@ with torch.no_grad():
 
     ax2[2].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True)
     ax2[2].hist(pyramidal, bins=8, range=[0,1], label='pyramidal', density=True)
-    ax2[2].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True)
+    ax2[2].hist(unlabeled, bins=8, range=[0,1], label='unlabeled', linewidth=1.7, histtype=u'step', density=True, alpha=0.5)
     ax2[2].set_title('Unlabeled Cell Discrimination Plot')
     ax2[2].legend(bbox_to_anchor=(1.5,.6))
 
     plt.tight_layout()
     plt.show()
+    plt.savefig('disc_hists.png')
 
     # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
     predicted_class_w_offset = decipher_class(out_data, True)
