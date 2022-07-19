@@ -297,6 +297,8 @@ model.eval()
 with torch.no_grad():
     out_data = model(x_test.float())
 
+    print(y_test[:][0])
+
     # discrimination histogram graphing
     fig2, ax2 = plt.subplots(3) # graph all 3 next to each other
 
@@ -406,4 +408,4 @@ with torch.no_grad():
         plt.scatter(data_plot[y==i,0], data_plot[y==i,1],alpha=.8,color=color,label=target_name)
     plt.legend(loc='best',shadow=False,scatterpoints=1)
 
-    plt.show()
+    # plt.show()
