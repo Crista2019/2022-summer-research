@@ -8,6 +8,7 @@ import sklearn.preprocessing as prep
 import sklearn.model_selection as ms
 import sklearn.discriminant_analysis as discrim
 import sklearn.metrics as met
+from sklearn.utils import class_weight
 import torch
 import math
 import torch.nn.functional as F
@@ -106,9 +107,6 @@ for row in csvreader:
     transformed_data = [] # initialize variable (will be replaced by tensor then concatenated)
     label = []
 
-    # TODO: tranpose the one hot encoding and concat with the other data so we add dimensions to the input but end up with a tensor of floats
-    # then standardize the floats after the fact
-    
     row = row[2:] # remove unhelpful label data
 
     if 'NaN' in row:
@@ -206,6 +204,11 @@ input_data = input_data.transpose(-1,0) # where each row is a different subject 
 
 # divide into 70% train and 30% train
 x_train, x_test, y_train, y_test = ms.train_test_split(input_data, output_label, test_size=0.3, shuffle=False)
+
+# TODO: classweights
+# weights = class_weight.compute_class_weight(y_train)
+# sampler = WeightedRandomSampler(weights, weights.shape[0], replacement=True)
+# loader = DataLoader(x_train, batch_size = 500, shuffle=True, sampler=sampler)
 
 # start of the neural network
 
