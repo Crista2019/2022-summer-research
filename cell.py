@@ -10,6 +10,7 @@ import sklearn.discriminant_analysis as discrim
 import sklearn.metrics as met
 from sklearn.utils import class_weight
 import torch
+import torch.utils.data as data_utils
 import math
 import torch.nn.functional as F
 
@@ -205,10 +206,28 @@ input_data = input_data.transpose(-1,0) # where each row is a different subject 
 # divide into 70% train and 30% train
 x_train, x_test, y_train, y_test = ms.train_test_split(input_data, output_label, test_size=0.3, shuffle=False)
 
-# TODO: classweights
-# weights = class_weight.compute_class_weight(y_train)
-# sampler = WeightedRandomSampler(weights, weights.shape[0], replacement=True)
-# loader = DataLoader(x_train, batch_size = 500, shuffle=True, sampler=sampler)
+# classweights
+train_y_ints = np.argmax(y_train,axis=1).numpy()
+train_classes = np.unique(train_y_ints)
+test_y_ints = np.argmax(y_test,axis=1).numpy()
+test_classes = np.unique(test_y_ints)
+
+train_weights = class_weight.compute_class_weight('balanced', classes=train_classes, y=train_y_ints)
+train_sampler = data_utils.WeightedRandomSampler(train_weights, train_weights.shape[0], replacement=True)
+# combine the train data set
+train_data = []
+for i in range(len(x_train)):
+    train_data.append([x_train[i], y_train[i]])
+
+test_weights = class_weight.compute_class_weight('balanced', classes=test_classes, y=test_y_ints)
+test_sampler = data_utils.WeightedRandomSampler(test_weights, test_weights.shape[0], replacement=True)
+# combine the test data set
+test_data = []
+for i in range(len(x_test)):
+    test_data.append([x_test[i], y_test[i]])
+
+train_loader = data_utils.DataLoader(train_data, batch_size=500, shuffle=False, sampler=train_sampler)
+test_loader = data_utils.DataLoader(test_data, batch_size=500, shuffle=False, sampler=test_sampler)
 
 # start of the neural network
 
@@ -221,32 +240,78 @@ output_dims = output_label.shape[1]
 # print(output_label.dtype)
 
 model = torch.nn.Sequential(
-    torch.nn.Linear(input_dims,64),
+    torch.nn.Linear(input_dims,100),
     torch.nn.ReLU(),
-    torch.nn.Linear(64,10),
+    torch.nn.Linear(100,100),
     torch.nn.ReLU(),
-    torch.nn.ReLU(),
-    torch.nn.ReLU(),
-    torch.nn.Linear(10,5),
-    torch.nn.ReLU(),
-    torch.nn.Linear(5,output_dims),
-    torch.nn.Softmax(dim=1) # sigmoid?
+    torch.nn.Linear(100,output_dims),
+    torch.nn.Softmax(dim=1) 
 )
 
 learning_rate = 1e-2
 loss_fn = torch.nn.CrossEntropyLoss() 
-
-#TODO plot loss, divide and plot for test and training, 
-
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9) # .626
-# optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+epoch = 10000
 
-losses = []
+train_losses = []
+eval_losses = []
 
 # training step
-model.train()
+# model.train()
 
-for t in range(10000):
+class Network(torch.nn.Module):
+    def __init__(self):
+        super(Network, self).__init__()
+        self.fc = torch.nn.Linear(input_dims,100)
+        self.fc1 = torch.nn.Linear(100,100)
+        self.fc2 = torch.nn.Linear(100, output_dims)
+        self.soft = torch.nn.Softmax(dim=1)
+    def forward(self,y):
+        y = F.relu(self.fc(y))
+        y = F.relu(self.fc1(y))
+        y = F.relu(self.fc2(y))
+        y = self.soft(y)
+        return y
+
+models = Network()
+if torch.cuda.is_available():
+    models = models.cuda()
+
+
+for i in range(epoch):
+    # train
+    models.train()
+    for idx, batch in enumerate(train_loader):
+        data, label = batch
+        if torch.cuda.is_available():
+            data, label = data.cuda(), label.cuda()
+        optimizer.zero_grad()
+        targets = models(data.float())
+        loss = loss_fn(targets,label)
+        loss.backward()
+        optimizer.step()
+        train_losses.append(loss.item())
+        print('train loss',loss.item())
+    # test
+    models.eval()
+    for idx, batch in enumerate(test_loader):
+        data, label = batch
+        if torch.cuda.is_available():
+            data, label = data.cuda(), label.cuda()
+        targets = models(data.float())
+        loss = loss_fn(targets,label)
+        eval_losses.append(loss.item()*data.size(0))
+        print('test loss',loss.item())
+
+"""
+use mini batch, size of mini batch is param
+methods to replace for loop
+avoid big for loops, optimized training procedure
+don't use test set to train, but evaluate and graph accuracy on test set *as* I train
+"""
+
+"""
+for t in range(1000):
 
     # zero gradients 
     optimizer.zero_grad()
@@ -261,34 +326,31 @@ for t in range(10000):
     # adjust learning weights
     optimizer.step()
 
-    losses.append(loss.item())
+    train_losses.append(loss.item())
 
-    # if t % 100 == 0:
-    #     print(y_pred)
-    #     print(y_train)
-    #     print(t, loss.item())
-    if t == 19999:
+    with torch.no_grad():
+        out_data = model(x_test.float())
+        loss_test = loss_fn(out_data, y_test) 
+        eval_losses.append(loss_test.item())
+    if t == 1999:
         print(t, loss.item())
-        # for i in range(x_train.shape[0]):
-            # print(y_pred[i])
-            # print(output_label[i])
-            # print('------')
-# print(losses)
+
 # plot the losses
 fig1, ax1 = plt.subplots()
 ax1.set_title('Training Loss')
 ax1.set_xlabel('Epoch')
 ax1.set_ylabel('Loss')
-ax1.scatter(np.arange(len(losses)),losses)
-# plt.tight_layout()
-# plt.show()
+ax1.scatter(np.arange(len(train_losses)),train_losses, label='train loss')
+ax1.scatter(np.arange(len(eval_losses)),eval_losses, label='evaluation loss')
+plt.legend()
+plt.tight_layout()
+plt.show()
 
 def decipher_class(input_data, offset=False):
-    """
-    input: a dataset of type float tensor in form: [[0.,0.,1.],[0.00002,1.00,0.008],...]
-    output: a numpy array containing floats of the argmax index of the input: [2,1,...]
-    if offset is set to true, an offset will be applied to avoid overlapping ticks for graphs
-    """
+    # input: a dataset of type float tensor in form: [[0.,0.,1.],[0.00002,1.00,0.008],...]
+    # output: a numpy array containing floats of the argmax index of the input: [2,1,...]
+    # if offset is set to true, an offset will be applied to avoid overlapping ticks for graphs
+
     output_data = []
     for row in input_data:
         class_num = np.argmax(row)
@@ -315,7 +377,7 @@ with torch.no_grad():
     c0_labeled2 = y_test[:,0] == 2
     interneurons = class_0[c0_labeled0].detach().numpy().flatten()
     pyramidal = class_0[c0_labeled1].detach().numpy().flatten()
-    unlabeled = class_0[c0_labeled2].detach().numpy().flatten()
+    unlabeled = class_0[c0_labeled2].detach().numpy().flatten()*50
 
 
     ax2[0].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True, alpha=0.5)
@@ -331,7 +393,7 @@ with torch.no_grad():
     c1_labeled2 = y_test[:,1] == 2
     interneurons = class_1[c1_labeled0].detach().numpy().flatten()
     pyramidal = class_1[c1_labeled1].detach().numpy().flatten()
-    unlabeled = class_1[c1_labeled2].detach().numpy().flatten()
+    unlabeled = class_1[c1_labeled2].detach().numpy().flatten()*50
 
 
     ax2[1].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True, alpha=0.5)
@@ -340,14 +402,17 @@ with torch.no_grad():
     ax2[1].set_title('Pyramidal Cell Discrimination Plot')
     ax2[1].legend(bbox_to_anchor=(1.5,.6))
 
-    # discrimination plot for class 1: pyramidal cells
+    # discrimination plot for class 1: unlabeled cells
     class_2 = out_data[:,2]
     c2_labeled0 = y_test[:,2] == 0
     c2_labeled1 = y_test[:,2] == 1
     c2_labeled2 = y_test[:,2] == 2
     interneurons = class_2[c2_labeled0].detach().numpy().flatten()
     pyramidal = class_2[c2_labeled1].detach().numpy().flatten()
-    unlabeled = class_2[c2_labeled2].detach().numpy().flatten()
+    unlabeled = class_2[c2_labeled2].detach().numpy().flatten()*50
+    print(interneurons)
+    print(pyramidal)
+    print(unlabeled)
 
 
     ax2[2].hist(interneurons, bins=8, range=[0,1], label='interneurons', density=True, alpha=0.5)
@@ -358,7 +423,7 @@ with torch.no_grad():
 
     plt.tight_layout()
     plt.show()
-    plt.savefig('disc_hists.png')
+    # plt.savefig('disc_hists.png')
 
     # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
     predicted_class_w_offset = decipher_class(out_data, True)
@@ -394,7 +459,7 @@ with torch.no_grad():
     ax3.scatter(np.array(wrong_x), np.array(wrong_y_w_offset), color='red', marker='|', alpha=.3, label='incorrectly classified by model')
     plt.legend(bbox_to_anchor=(.8,.6))
     plt.tight_layout()
-    # plt.show()
+    plt.show()
     # plt.savefig()
 
     # Discriminant Analysis
@@ -415,4 +480,6 @@ with torch.no_grad():
         plt.scatter(data_plot[y==i,0], data_plot[y==i,1],alpha=.8,color=color,label=target_name)
     plt.legend(loc='best',shadow=False,scatterpoints=1)
 
-    # plt.show()
+    plt.show()
+
+"""
