@@ -277,11 +277,10 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss() 
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=.9)
-epoch = 5
+epoch = 1000
 
 for i in range(epoch):
     # train
-    epoch_train = []
     models.train()
     for idx, batch in enumerate(train_loader):
         data, label = batch
@@ -292,8 +291,7 @@ for i in range(epoch):
         loss = loss_fn(targets,label)
         loss.backward()
         optimizer.step()
-        epoch_train.append(loss.item())
-    train_losses.append(epoch_train)
+        train_losses.append(loss.item())
         # print('train loss',loss.item())
     # test
     epoch_test = []
@@ -304,19 +302,16 @@ for i in range(epoch):
             data, label = data.cuda(), label.cuda()
         targets = models(data.float())
         loss = loss_fn(targets,label)
-        epoch_test.append(loss.item())
-    # eval_losses.append(loss.item()*data.size(0))
-    eval_losses.append(epoch_test)
+        eval_losses.append(loss.item())
+        # eval_losses.append(loss.item()*data.size(0))
         # print('test loss',loss.item())
-
 # plot the losses
 fig1, ax1 = plt.subplots()
 ax1.set_title('Training Loss')
 ax1.set_xlabel('Epoch')
 ax1.set_ylabel('Loss')
-for i in range(epoch):
-    ax1.scatter(np.arange(len(train_losses[i])),train_losses[i], label='train loss at epoch '+str(i))
-    ax1.scatter(np.arange(len(eval_losses[i])),eval_losses[i], label='evaluation loss at epoch '+str(i))
+ax1.scatter(np.arange(len(train_losses)),train_losses, label='train loss at epoch ')
+ax1.scatter(np.arange(len(eval_losses)),eval_losses, label='evaluation loss at epoch ')
 ax1.legend()
 plt.tight_layout()
 plt.savefig('disc_hists.png')
