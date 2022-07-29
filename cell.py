@@ -291,7 +291,7 @@ for i in range(epoch):
         loss = loss_fn(targets,label)
         loss.backward()
         optimizer.step()
-        train_losses.append(loss.item())
+    train_losses.append(loss.item())
         # print('train loss',loss.item())
     # test
     models.eval()
@@ -301,7 +301,7 @@ for i in range(epoch):
             data, label = data.cuda(), label.cuda()
         targets = models(data.float())
         loss = loss_fn(targets,label)
-        eval_losses.append(loss.item()*data.size(0))
+    eval_losses.append(loss.item()*data.size(0))
         # print('test loss',loss.item())
 
 # plot the losses
@@ -309,8 +309,8 @@ fig1, ax1 = plt.subplots()
 ax1.set_title('Training Loss')
 ax1.set_xlabel('Epoch')
 ax1.set_ylabel('Loss')
-ax1.plot(np.arange(len(train_losses)),train_losses, label='train loss')
-ax1.plot(np.arange(len(eval_losses)),eval_losses, label='evaluation loss')
+ax1.scatter(np.arange(len(train_losses)),train_losses, label='train loss')
+ax1.scatter(np.arange(len(eval_losses)),eval_losses, label='evaluation loss')
 ax1.legend()
 plt.tight_layout()
 plt.savefig('disc_hists.png')
