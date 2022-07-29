@@ -292,7 +292,7 @@ for i in range(epoch):
         loss.backward()
         optimizer.step()
         train_losses.append(loss.item())
-        print('train loss',loss.item())
+        # print('train loss',loss.item())
     # test
     models.eval()
     for idx, batch in enumerate(test_loader):
@@ -311,9 +311,9 @@ ax1.set_xlabel('Epoch')
 ax1.set_ylabel('Loss')
 ax1.scatter(np.arange(len(train_losses)),train_losses, label='train loss')
 ax1.scatter(np.arange(len(eval_losses)),eval_losses, label='evaluation loss')
-plt.savefig('disc_hists.png')
 plt.legend()
 plt.tight_layout()
+plt.savefig('disc_hists.png')
 plt.show()
 """
 def decipher_class(input_data, offset=False):
