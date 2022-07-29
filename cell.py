@@ -226,8 +226,8 @@ test_data = []
 for i in range(len(x_test)):
     test_data.append([x_test[i], y_test[i]])
 
-train_loader = data_utils.DataLoader(train_data, batch_size=500, shuffle=False, sampler=train_sampler)
-test_loader = data_utils.DataLoader(test_data, batch_size=500, shuffle=False, sampler=test_sampler)
+train_loader = data_utils.DataLoader(train_data, batch_size=20, shuffle=False, sampler=train_sampler)
+test_loader = data_utils.DataLoader(test_data, batch_size=20, shuffle=False, sampler=test_sampler)
 
 # start of the neural network
 
@@ -248,10 +248,6 @@ model = torch.nn.Sequential(
     torch.nn.Softmax(dim=1) 
 )
 
-learning_rate = 1e-2
-loss_fn = torch.nn.CrossEntropyLoss() 
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9) # .626
-epoch = 10000
 
 train_losses = []
 eval_losses = []
@@ -277,6 +273,11 @@ models = Network()
 if torch.cuda.is_available():
     models = models.cuda()
 
+# hyperparams
+learning_rate = 1e-3
+loss_fn = torch.nn.CrossEntropyLoss() 
+optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=.9)
+epoch = 10000
 
 for i in range(epoch):
     # train
@@ -291,7 +292,7 @@ for i in range(epoch):
         loss.backward()
         optimizer.step()
         train_losses.append(loss.item())
-        # print('train loss',loss.item())
+        print('train loss',loss.item())
     # test
     models.eval()
     for idx, batch in enumerate(test_loader):
