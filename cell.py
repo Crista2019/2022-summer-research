@@ -277,7 +277,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss() 
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=.9)
-epoch = 1000
+epoch = 5
 
 for i in range(epoch):
     # train
