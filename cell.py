@@ -291,7 +291,7 @@ for i in range(epoch):
         loss.backward()
         optimizer.step()
         train_losses.append(loss.item())
-        print('train loss',loss.item())
+        # print('train loss',loss.item())
     # test
     models.eval()
     for idx, batch in enumerate(test_loader):
@@ -301,39 +301,7 @@ for i in range(epoch):
         targets = models(data.float())
         loss = loss_fn(targets,label)
         eval_losses.append(loss.item()*data.size(0))
-        print('test loss',loss.item())
-
-"""
-use mini batch, size of mini batch is param
-methods to replace for loop
-avoid big for loops, optimized training procedure
-don't use test set to train, but evaluate and graph accuracy on test set *as* I train
-"""
-
-"""
-for t in range(1000):
-
-    # zero gradients 
-    optimizer.zero_grad()
-
-    # make predictions
-    y_pred = model(x_train.float())   
-
-    # compute loss and its gradients
-    loss = loss_fn(y_pred, y_train) 
-    loss.backward()
-
-    # adjust learning weights
-    optimizer.step()
-
-    train_losses.append(loss.item())
-
-    with torch.no_grad():
-        out_data = model(x_test.float())
-        loss_test = loss_fn(out_data, y_test) 
-        eval_losses.append(loss_test.item())
-    if t == 1999:
-        print(t, loss.item())
+        # print('test loss',loss.item())
 
 # plot the losses
 fig1, ax1 = plt.subplots()
@@ -345,7 +313,7 @@ ax1.scatter(np.arange(len(eval_losses)),eval_losses, label='evaluation loss')
 plt.legend()
 plt.tight_layout()
 plt.show()
-
+"""
 def decipher_class(input_data, offset=False):
     # input: a dataset of type float tensor in form: [[0.,0.,1.],[0.00002,1.00,0.008],...]
     # output: a numpy array containing floats of the argmax index of the input: [2,1,...]
