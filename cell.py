@@ -281,8 +281,8 @@ for i in range(epoch):
         loss.backward()
         optimizer.step()
         loss_item = loss.detach().item()
-        train_losses.append(loss_item)
-        # print('train loss',loss.item())
+    train_losses.append(loss_item)
+    # print('train loss',loss.item())
     # test
     epoch_test = []
     models.eval()
@@ -293,9 +293,9 @@ for i in range(epoch):
         targets = models(data.float())
         loss = loss_fn(targets,label)
         loss_item = loss.detach().item()
-        eval_losses.append(loss_item)
-        # eval_losses.append(loss.item()*data.size(0))
-        # print('test loss',loss.item())
+    eval_losses.append(loss_item)
+    # eval_losses.append(loss.item()*data.size(0))
+    # print('test loss',loss.item())
 # plot the losses
 fig1, ax1 = plt.subplots()
 ax1.set_title('Training Loss')
