@@ -13,6 +13,7 @@ import torch
 import torch.utils.data as data_utils
 import math
 import torch.nn.functional as F
+# from torchmetrics import ConfusionMatrix
 
 """
 Hc3-cell labels:
@@ -239,21 +240,9 @@ output_dims = output_label.shape[1]
 # print(input_data.dtype)
 # print(output_label.dtype)
 
-model = torch.nn.Sequential(
-    torch.nn.Linear(input_dims,100),
-    torch.nn.ReLU(),
-    torch.nn.Linear(100,100),
-    torch.nn.ReLU(),
-    torch.nn.Linear(100,output_dims),
-    torch.nn.Softmax(dim=1) 
-)
-
 
 train_losses = []
 eval_losses = []
-
-# training step
-# model.train()
 
 class Network(torch.nn.Module):
     def __init__(self):
@@ -291,7 +280,8 @@ for i in range(epoch):
         loss = loss_fn(targets,label)
         loss.backward()
         optimizer.step()
-        train_losses.append(loss.item())
+        loss_item = loss.detach().item()
+        train_losses.append(loss_item)
         # print('train loss',loss.item())
     # test
     epoch_test = []
@@ -302,7 +292,8 @@ for i in range(epoch):
             data, label = data.cuda(), label.cuda()
         targets = models(data.float())
         loss = loss_fn(targets,label)
-        eval_losses.append(loss.item())
+        loss_item = loss.detach().item()
+        eval_losses.append(loss_item)
         # eval_losses.append(loss.item()*data.size(0))
         # print('test loss',loss.item())
 # plot the losses
@@ -314,10 +305,10 @@ ax1.scatter(np.arange(len(train_losses)),train_losses, label='train loss')
 ax1.scatter(np.arange(len(eval_losses)),eval_losses, label='evaluation loss')
 ax1.legend()
 plt.tight_layout()
-plt.savefig('disc_hists.png')
+plt.savefig('loss.png')
 plt.show()
-"""
-def decipher_class(input_data, offset=False):
+
+def decipher_class(input_data):
     # input: a dataset of type float tensor in form: [[0.,0.,1.],[0.00002,1.00,0.008],...]
     # output: a numpy array containing floats of the argmax index of the input: [2,1,...]
     # if offset is set to true, an offset will be applied to avoid overlapping ticks for graphs
@@ -325,21 +316,21 @@ def decipher_class(input_data, offset=False):
     output_data = []
     for row in input_data:
         class_num = np.argmax(row)
-        if offset:
-            output_data.append(class_num.item()+.1) # will add .1 offset
-        else:
-            output_data.append(class_num.item())
+        output_data.append(class_num.item())
     return np.array(output_data)
 
 #  testing step
-model.eval()
+models.eval()
 with torch.no_grad():
-    out_data = model(x_test.float())
-
-    print(y_test[:][0])
+    if torch.cuda.is_available():
+        x_test = x_test.cuda()
+    out_data = models(x_test.float())
 
     # discrimination histogram graphing
     fig2, ax2 = plt.subplots(3) # graph all 3 next to each other
+
+    # copy tensor to local memory in order to use numpy
+    out_data = out_data.cpu()
 
     # discrimination plot for class 0: interneurons
     class_0 = out_data[:,0]
@@ -394,10 +385,9 @@ with torch.no_grad():
 
     plt.tight_layout()
     plt.show()
-    # plt.savefig('disc_hists.png')
+    plt.savefig('disc_hists.png')
 
     # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
-    predicted_class_w_offset = decipher_class(out_data, True)
     predicted_class = decipher_class(out_data)
     expected_class = decipher_class(y_test)
 
@@ -405,36 +395,19 @@ with torch.no_grad():
     print('BALANCED ACCURACY:',met.balanced_accuracy_score(expected_class,predicted_class))
 
     correct_x = []
-    correct_y_w_offset = []
     wrong_x = []
-    wrong_y_w_offset = []
     for i in range(predicted_class.shape[0]):
-        # account for the offset!
         if predicted_class[i] == expected_class[i]:
             correct_x.append(i)
-            correct_y_w_offset.append(predicted_class_w_offset[i])
         else:
             wrong_x.append(i)
-            wrong_y_w_offset.append(predicted_class_w_offset[i])
 
     # raw, unbalanced accuracy
-    # accuracy = len(correct_x)/predicted_class.shape[0]
-    # print('test accuracy:',accuracy)
-
-    fig3, ax3 = plt.subplots(figsize=(15,4))
-    ax3.set_title('Classification Accuracy')
-    ax3.set_xlabel('Cell')
-    ax3.set_ylabel('Predicted Class')
-    ax3.scatter(np.arange(expected_class.shape[0]), expected_class, color='black', marker='|', alpha=.3, label='expected class')
-    ax3.scatter(np.array(correct_x), np.array(correct_y_w_offset), color='green', marker='|', alpha=.3, label='correctly classified by model')
-    ax3.scatter(np.array(wrong_x), np.array(wrong_y_w_offset), color='red', marker='|', alpha=.3, label='incorrectly classified by model')
-    plt.legend(bbox_to_anchor=(.8,.6))
-    plt.tight_layout()
-    plt.show()
-    # plt.savefig()
+    accuracy = len(correct_x)/predicted_class.shape[0]
+    print('test accuracy:',accuracy)
 
     # Discriminant Analysis
-    X = x_test
+    X = x_test.cpu()
     y = expected_class
     target_names = ['interneuron','pyramidal','not identified']
 
@@ -453,4 +426,7 @@ with torch.no_grad():
 
     plt.show()
 
-"""
+    # confusion matrix
+    confmat = met.confusion_matrix(expected_class, predicted_class)
+    # fig, ax = plt.subplots()
+    print(confmat)
