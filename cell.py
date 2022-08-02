@@ -1,6 +1,3 @@
-# import matplotlib
-# matplotlib.use('TKAgg')
-
 import csv
 import math
 
@@ -15,7 +12,7 @@ import torch.nn.functional as F
 import torch.utils.data as data_utils
 from sklearn.utils import class_weight
 
-# from torchmetrics import ConfusionMatrix
+from tayloranalysis import TaylorAnalysis
 
 """
 Hc3-cell labels:
@@ -340,8 +337,21 @@ def save_model(epochs, model, optimizer, criterion):
         'loss': criterion,
         }, 'outputs/final_model.pth')
 
+# Taylor Coefficient Analysis yaay!
+models = TaylorAnalysis(models)
+
+models.setup_tc_checkpoints(
+    number_of_variables_in_data = 2,    # dimension of your model input
+    considered_variables_idx = [0,1],   # variables to be tracked
+    variable_names = ['x_1','x_2'],     # their representative names (plotting)
+    derivation_order=3,                  # calculates derivation up to 3, including 3
+    eval_nodes='all',                   # computes TCs based on specified output node(s)
+    eval_only_max_node=False            # compute TCs based on the output node with the highest value
+)
+
 for i in range(epoch):
     print(f"Epoch: {i}", end="\r")
+
     # train
     models.train()
     batch_losses = []
@@ -349,6 +359,7 @@ for i in range(epoch):
         data, label = batch
         if torch.cuda.is_available():
             data, label = data.cuda(), label.cuda()
+
         optimizer.zero_grad()
         targets = models(data.float())
         loss = loss_fn(targets, label)
@@ -356,7 +367,12 @@ for i in range(epoch):
         optimizer.step()
         loss_item = loss.detach().item()
         batch_losses.append(loss_item)
+
+        # save current taylorcoefficients
+        models.tc_checkpoint(data.float(), epoch=epoch) # x_train shape is as usual: (batch, features)
+
     train_losses.append(np.array(batch_losses).mean())
+    
     # evaluation
     epoch_test = []
     models.eval()
@@ -516,3 +532,18 @@ with torch.no_grad():
     confmat = met.confusion_matrix(expected_class, predicted_class)
     # fig, ax = plt.subplots()
     print(confmat)
+
+    # eval_data = []
+    # for i in range(len(X)):
+    #     eval_data.append([X[i], y[i]])
+
+    # plot the saved checkpoints for the TCA model
+    models.plot_checkpoints(path='outputs/tc_training.pdf')
+    # plot the taylor coefficients after training
+    models.plot_taylor_coefficients(
+        X,
+        considered_variables_idx=[0,1],
+        variable_names=['x_1','x_2'],
+        derivation_order=3,
+        path='outputs/coefficients.pdf'
+    )
