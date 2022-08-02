@@ -265,10 +265,6 @@ train_data = []
 for i in range(len(x_train)):
     train_data.append([x_train[i], y_train[i]])
 
-# test_weights = class_weight.compute_class_weight("balanced", classes=test_classes, y=test_y_ints)
-# test_sampler = data_utils.WeightedRandomSampler(test_weights, test_weights.shape[0], replacement=True)
-
-
 test_weights = class_weight.compute_class_weight(
     class_weight="balanced",
     classes=test_classes,
@@ -284,7 +280,6 @@ test_sampler = data_utils.WeightedRandomSampler(
     num_samples=ts_weights.shape[0],  # N
     replacement=True,
 )
-
 
 # combine the test data set
 test_data = []
@@ -304,10 +299,8 @@ output_dims = output_label.shape[1]
 # print(input_data.dtype)
 # print(output_label.dtype)
 
-
 train_losses = []
 eval_losses = []
-
 
 class Network(torch.nn.Module):
     def __init__(self):
@@ -324,7 +317,6 @@ class Network(torch.nn.Module):
         y = self.soft(y)
         return y
 
-
 models = Network()
 if torch.cuda.is_available():
     models = models.cuda()
@@ -334,6 +326,19 @@ learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
 epoch = 3500
+# checkpoint_loss = False
+
+def save_model(epochs, model, optimizer, criterion):
+    """
+    function to save the trained model to disk
+    """
+    print(f"Saving best model...")
+    torch.save({
+        'epoch': epochs,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': criterion,
+        }, 'outputs/final_model.pth')
 
 for i in range(epoch):
     print(f"Epoch: {i}", end="\r")
@@ -352,8 +357,7 @@ for i in range(epoch):
         loss_item = loss.detach().item()
         batch_losses.append(loss_item)
     train_losses.append(np.array(batch_losses).mean())
-    # print('train loss',loss.item())
-    # test
+    # evaluation
     epoch_test = []
     models.eval()
     for idx, batch in enumerate(test_loader):
@@ -364,19 +368,29 @@ for i in range(epoch):
         loss = loss_fn(targets, label)
         loss_item = loss.detach().item()
         eval_losses.append(loss_item)
-    # eval_losses.append(loss.item()*data.size(0))
-    # print('test loss',loss.item())
+    
+    # flag if no model has been saved yet (uncomment only on first run)
+    # if not checkpoint_loss:
+    #     save_model(epoch, models, optimizer, loss_item)
+    
+    # save model with best loss
+    checkpoint = torch.load('outputs/final_model.pth')
+    checkpoint_loss = checkpoint['loss']
+    if loss < checkpoint_loss:
+        print('Better loss found!', loss_item)
+        save_model(epoch, models, optimizer, loss_item)
+
+
 # plot the losses
 fig1, ax1 = plt.subplots()
 ax1.set_title("Training Loss")
 ax1.set_xlabel("Epoch")
 ax1.set_ylabel("Loss")
-print(len(train_losses))
 ax1.scatter(np.arange(len(train_losses)), train_losses, label="train loss")
 ax1.scatter(np.arange(len(eval_losses)), eval_losses, label="evaluation loss")
 ax1.legend()
 plt.tight_layout()
-plt.savefig("loss.png")
+plt.savefig("outputs/loss.png")
 plt.show()
 
 
@@ -397,6 +411,8 @@ models.eval()
 with torch.no_grad():
     if torch.cuda.is_available():
         x_test = x_test.cuda()
+    best_model = torch.load('outputs/final_model.pth')['model_state_dict']
+    models.load_state_dict (best_model)
     out_data = models(x_test.float())
 
     # discrimination histogram graphing
@@ -412,7 +428,7 @@ with torch.no_grad():
     c0_labeled2 = y_test[:, 0] == 2
     interneurons = class_0[c0_labeled0].detach().numpy().flatten()
     pyramidal = class_0[c0_labeled1].detach().numpy().flatten()
-    unlabeled = class_0[c0_labeled2].detach().numpy().flatten() * 50
+    unlabeled = class_0[c0_labeled2].detach().numpy().flatten()
 
     ax2[0].hist(interneurons, bins=8, range=[0, 1], label="interneurons", density=True, alpha=0.5)
     ax2[0].hist(pyramidal, bins=8, range=[0, 1], label="pyramidal", density=True, alpha=0.5)
@@ -427,7 +443,7 @@ with torch.no_grad():
     c1_labeled2 = y_test[:, 1] == 2
     interneurons = class_1[c1_labeled0].detach().numpy().flatten()
     pyramidal = class_1[c1_labeled1].detach().numpy().flatten()
-    unlabeled = class_1[c1_labeled2].detach().numpy().flatten() * 50
+    unlabeled = class_1[c1_labeled2].detach().numpy().flatten()
 
     ax2[1].hist(interneurons, bins=8, range=[0, 1], label="interneurons", density=True, alpha=0.5)
     ax2[1].hist(pyramidal, bins=8, range=[0, 1], label="pyramidal", density=True, alpha=0.5)
@@ -442,7 +458,7 @@ with torch.no_grad():
     c2_labeled2 = y_test[:, 2] == 2
     interneurons = class_2[c2_labeled0].detach().numpy().flatten()
     pyramidal = class_2[c2_labeled1].detach().numpy().flatten()
-    unlabeled = class_2[c2_labeled2].detach().numpy().flatten() * 50
+    unlabeled = class_2[c2_labeled2].detach().numpy().flatten()
     print(interneurons)
     print(pyramidal)
     print(unlabeled)
@@ -454,8 +470,8 @@ with torch.no_grad():
     ax2[2].legend(bbox_to_anchor=(1.5, 0.6))
 
     plt.tight_layout()
+    plt.savefig("outputs/disc_hists.png")
     plt.show()
-    plt.savefig("disc_hists.png")
 
     # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
     predicted_class = decipher_class(out_data)
