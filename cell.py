@@ -322,7 +322,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
-epoch = 3500
+epoch = 1 #3500
 # checkpoint_loss = False
 
 def save_model(epochs, model, optimizer, criterion):
@@ -340,13 +340,20 @@ def save_model(epochs, model, optimizer, criterion):
 # Taylor Coefficient Analysis yaay!
 models = TaylorAnalysis(models)
 
+def list_of_variable_names(n):
+    """
+    takes in a list of numbers and returns a list of variable names with the correct range
+    """
+    return ['x{}'.format(i+1) for i in range(n)]
+
+
 models.setup_tc_checkpoints(
-    number_of_variables_in_data = 2,    # dimension of your model input
-    considered_variables_idx = [0,1],   # variables to be tracked
-    variable_names = ['x_1','x_2'],     # their representative names (plotting)
-    derivation_order=3,                  # calculates derivation up to 3, including 3
-    eval_nodes='all',                   # computes TCs based on specified output node(s)
-    eval_only_max_node=False            # compute TCs based on the output node with the highest value
+    number_of_variables_in_data = input_dims,                   # dimension of your model input
+    considered_variables_idx = range(input_dims),               # variables to be tracked
+    variable_names = list_of_variable_names(input_dims),        # their representative names (plotting)
+    derivation_order=3,                                         # calculates derivation up to 3, including 3
+    eval_nodes='all',                                           # computes TCs based on specified output node(s)
+    eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
 
 for i in range(epoch):
@@ -390,7 +397,11 @@ for i in range(epoch):
     #     save_model(epoch, models, optimizer, loss_item)
     
     # save model with best loss
-    checkpoint = torch.load('outputs/final_model.pth')
+    if not torch.cuda.is_available():
+        checkpoint = torch.load('outputs/final_model.pth', map_location=torch.device('cpu'))
+    else:
+        # cuda by default
+        checkpoint = torch.load('outputs/final_model.pth')
     checkpoint_loss = checkpoint['loss']
     if loss < checkpoint_loss:
         print('Better loss found!', loss_item)
@@ -427,7 +438,12 @@ models.eval()
 with torch.no_grad():
     if torch.cuda.is_available():
         x_test = x_test.cuda()
-    best_model = torch.load('outputs/final_model.pth')['model_state_dict']
+    if not torch.cuda.is_available():
+        best_model = torch.load('outputs/final_model.pth', map_location=torch.device('cpu'))['model_state_dict']
+    else:
+        # cuda by default
+        best_model = torch.load('outputs/final_model.pth')['model_state_dict']
+    
     models.load_state_dict (best_model)
     out_data = models(x_test.float())
 
@@ -537,13 +553,16 @@ with torch.no_grad():
     # for i in range(len(X)):
     #     eval_data.append([X[i], y[i]])
 
-    # plot the saved checkpoints for the TCA model
-    models.plot_checkpoints(path='outputs/tc_training.pdf')
     # plot the taylor coefficients after training
     models.plot_taylor_coefficients(
-        X,
-        considered_variables_idx=[0,1],
-        variable_names=['x_1','x_2'],
+        X.float(),
+        considered_variables_idx=range(input_dims),
+        variable_names=list_of_variable_names(input_dims),
         derivation_order=3,
         path='outputs/coefficients.pdf'
     )
+
+    # plot the saved checkpoints for the TCA model
+    models.plot_checkpoints(path='outputs/tc_training.pdf')
+
+print('done!')
