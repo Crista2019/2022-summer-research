@@ -46,7 +46,6 @@ fireRate real, -- meanISI=mean(bootstrp(100,'mean',ISI)); fireRate = SampleRate/
 totalFireRate real, -- num of spikes divided by total recording length for a period with a high response rate
 
 cellType string -- ''p'=pyramidal, 'i'=interneuron, 'n'=not identified as pyramidal or interneuron
-
 """
 
 cell_data = open("hc3-cell.csv")
@@ -69,16 +68,15 @@ header = [
 
 csvreader = csv.reader(cell_data)
 
-
 def convert_to_one_hot(val, n, categories=None):
     """
     inputs:
-            - val: a single string representing ONE element of categorical data to be converted
-            - n: an int representing the number of classes being mapped total across *all* data (this can be larger than the categories size, if you want to pad the encoding with zeros)
-            - categories: tuple conatining all categories of data, whose indices can be used to map the excoding to ints for the one_hot func
-                                    e.g. ('data1', 'data2', 'data3', ...)
+    - val: a single string representing ONE element of categorical data to be converted
+    - n: an int representing the number of classes being mapped total across *all* data (this can be larger than the categories size, if you want to pad the encoding with zeros)
+    - categories: tuple conatining all categories of data, whose indices can be used to map the excoding to ints for the one_hot func
+                            e.g. ('data1', 'data2', 'data3', ...)
     outputs:
-            - a size n PyTorch tensor containing a list of all 0. (floats) and a single 1. which maps the input to its distinct category
+    - a size n PyTorch tensor containing a list of all 0. (floats) and a single 1. which maps the input to its distinct category
 
     the purpose of this function is to be called at each iteration of reading the raw csv data
     (or iterating through the rows of data later) and return the corresponding binary one hot encoding
@@ -322,7 +320,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
-epoch = 1 #3500
+epoch = 100 #3500
 # checkpoint_loss = False
 
 def save_model(epochs, model, optimizer, criterion):
@@ -349,9 +347,9 @@ def list_of_variable_names(n):
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
-    considered_variables_idx = range(input_dims),               # variables to be tracked
-    variable_names = list_of_variable_names(input_dims),        # their representative names (plotting)
-    derivation_order=3,                                         # calculates derivation up to 3, including 3
+    considered_variables_idx = range(5),               # variables to be tracked
+    variable_names = list_of_variable_names(5),        # their representative names (plotting)
+    derivation_order=2,                                         # calculates derivation up to 3, including 3
     eval_nodes='all',                                           # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
@@ -366,7 +364,6 @@ for i in range(epoch):
         data, label = batch
         if torch.cuda.is_available():
             data, label = data.cuda(), label.cuda()
-
         optimizer.zero_grad()
         targets = models(data.float())
         loss = loss_fn(targets, label)
@@ -549,20 +546,16 @@ with torch.no_grad():
     # fig, ax = plt.subplots()
     print(confmat)
 
-    # eval_data = []
-    # for i in range(len(X)):
-    #     eval_data.append([X[i], y[i]])
+# plot the taylor coefficients after training
+models.plot_taylor_coefficients(
+    X.float(),
+    considered_variables_idx=range(5),
+    variable_names=list_of_variable_names(5),
+    derivation_order=2,
+    path='outputs/coefficients.pdf'
+)
 
-    # plot the taylor coefficients after training
-    models.plot_taylor_coefficients(
-        X.float(),
-        considered_variables_idx=range(input_dims),
-        variable_names=list_of_variable_names(input_dims),
-        derivation_order=3,
-        path='outputs/coefficients.pdf'
-    )
-
-    # plot the saved checkpoints for the TCA model
-    models.plot_checkpoints(path='outputs/tc_training.pdf')
+# plot the saved checkpoints for the TCA model
+models.plot_checkpoints(path='outputs/tc_training.pdf')
 
 print('done!')
