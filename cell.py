@@ -373,7 +373,7 @@ for i in range(epoch):
         batch_losses.append(loss_item)
 
         # save current taylorcoefficients
-        models.tc_checkpoint(data.float(), epoch=epoch) # x_train shape is as usual: (batch, features)
+        models.tc_checkpoint(data.float(), epoch=i) # x_train shape is as usual: (batch, features)
 
     train_losses.append(np.array(batch_losses).mean())
     
@@ -441,7 +441,7 @@ with torch.no_grad():
         # cuda by default
         best_model = torch.load('outputs/final_model.pth')['model_state_dict']
     
-    models.load_state_dict (best_model)
+    models.load_state_dict(best_model)
     out_data = models(x_test.float())
 
     # discrimination histogram graphing
@@ -488,9 +488,6 @@ with torch.no_grad():
     interneurons = class_2[c2_labeled0].detach().numpy().flatten()
     pyramidal = class_2[c2_labeled1].detach().numpy().flatten()
     unlabeled = class_2[c2_labeled2].detach().numpy().flatten()
-    print(interneurons)
-    print(pyramidal)
-    print(unlabeled)
 
     ax2[2].hist(interneurons, bins=8, range=[0, 1], label="interneurons", density=True, alpha=0.5)
     ax2[2].hist(pyramidal, bins=8, range=[0, 1], label="pyramidal", density=True, alpha=0.5)
@@ -522,10 +519,11 @@ with torch.no_grad():
     print("test accuracy:", accuracy)
 
     # Discriminant Analysis
-    X = x_test.cpu()
     y = expected_class
     target_names = ["interneuron", "pyramidal", "not identified"]
-
+    
+    # must be cpu in order to convert to numpy 
+    X = x_test.cpu()
     analysis = discrim.LinearDiscriminantAnalysis()
     data_plot = analysis.fit(X, y).transform(X)
 
@@ -548,7 +546,7 @@ with torch.no_grad():
 
 # plot the taylor coefficients after training
 models.plot_taylor_coefficients(
-    X.float(),
+    x_test.float(),
     considered_variables_idx=range(5),
     variable_names=list_of_variable_names(5),
     derivation_order=2,
