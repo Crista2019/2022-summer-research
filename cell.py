@@ -338,17 +338,24 @@ def save_model(epochs, model, optimizer, criterion):
 # Taylor Coefficient Analysis yaay!
 models = TaylorAnalysis(models)
 
-def list_of_variable_names(n):
+def list_variable_names(root_word, n):
     """
     takes in a list of numbers and returns a list of variable names with the correct range
     """
-    return ['x{}'.format(i+1) for i in range(n)]
+    return ['{}{}'.format(root_word,i+1) for i in range(n)]
 
+# Determine names for all the input features for tc graphing
+animal_vars = list_variable_names('animal',11)
+ele_vars = list_variable_names('electrode',16)
+clu_vars = list_variable_names('cluster',32)
+region_vars = list_variable_names('region',9)
+cell_vars = ['nexciting','ninhibiting','exciting','inhibiting','excited','inhibited','fireRate','tot_fireRate']
+all_vars = animal_vars+ele_vars+clu_vars+region_vars+cell_vars
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
     considered_variables_idx = range(input_dims),               # variables to be tracked
-    variable_names = list_of_variable_names(input_dims),        # their representative names (plotting)
+    variable_names = all_vars,                                  # their representative names (plotting)
     derivation_order=1,                                         # calculates derivation up to 3, including 3
     eval_nodes='all',                                           # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
@@ -548,7 +555,7 @@ with torch.no_grad():
 models.plot_taylor_coefficients(
     x_test.float(),
     considered_variables_idx=range(input_dims),
-    variable_names=list_of_variable_names(input_dims),
+    variable_names=all_vars,
     derivation_order=1,
     path='outputs/coefficients.pdf'
 )
