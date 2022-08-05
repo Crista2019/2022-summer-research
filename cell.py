@@ -320,7 +320,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
-epoch = 100 #3500
+epoch = 3500 #3500
 # checkpoint_loss = False
 
 def save_model(epochs, model, optimizer, criterion):
@@ -347,9 +347,9 @@ def list_of_variable_names(n):
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
-    considered_variables_idx = range(5),               # variables to be tracked
-    variable_names = list_of_variable_names(5),        # their representative names (plotting)
-    derivation_order=2,                                         # calculates derivation up to 3, including 3
+    considered_variables_idx = range(input_dims),               # variables to be tracked
+    variable_names = list_of_variable_names(input_dims),        # their representative names (plotting)
+    derivation_order=1,                                         # calculates derivation up to 3, including 3
     eval_nodes='all',                                           # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
@@ -547,9 +547,9 @@ with torch.no_grad():
 # plot the taylor coefficients after training
 models.plot_taylor_coefficients(
     x_test.float(),
-    considered_variables_idx=range(5),
-    variable_names=list_of_variable_names(5),
-    derivation_order=2,
+    considered_variables_idx=range(input_dims),
+    variable_names=list_of_variable_names(input_dims),
+    derivation_order=1,
     path='outputs/coefficients.pdf'
 )
 
