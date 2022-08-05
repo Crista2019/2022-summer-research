@@ -320,7 +320,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
-epoch = 3500 #3500
+epoch = 100 #3500
 # checkpoint_loss = False
 
 def save_model(epochs, model, optimizer, criterion):
@@ -349,17 +349,21 @@ animal_vars = list_variable_names('animal',11)
 ele_vars = list_variable_names('electrode',16)
 clu_vars = list_variable_names('cluster',32)
 region_vars = list_variable_names('region',9)
-cell_vars = ['nexciting','ninhibiting','exciting','inhibiting','excited','inhibited','fireRate','tot_fireRate']
+cell_vars = ['nexciting','ninhibiting','exciting','inhibiting','excited','inhibited','fireRate','totFireRate']
 all_vars = animal_vars+ele_vars+clu_vars+region_vars+cell_vars
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
-    considered_variables_idx = range(input_dims),               # variables to be tracked
+    considered_variables_idx = range(input_dims)[-17:],         # variables to be tracked
     variable_names = all_vars,                                  # their representative names (plotting)
-    derivation_order=1,                                         # calculates derivation up to 3, including 3
+    derivation_order=3,                                         # calculates derivation up to 3, including 3
     eval_nodes='all',                                           # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
+
+# initial condition for early stopping
+loss_not_improved = 0 # count of how many epochs have passed without the loss improving
+prev_loss = float('inf')
 
 for i in range(epoch):
     print(f"Epoch: {i}", end="\r")
@@ -395,6 +399,17 @@ for i in range(epoch):
         loss = loss_fn(targets, label)
         loss_item = loss.detach().item()
         eval_losses.append(loss_item)
+
+    # early stopping condition
+    if prev_loss < eval_losses[-1]:
+        loss_not_improved += 1
+    else:
+        loss_not_improved = 0
+    prev_loss = eval_losses[-1]
+
+    # stop the training if loss hasn't improved on the evaluation set for 50 epochs
+    if loss_not_improved >= 50:
+        break 
     
     # flag if no model has been saved yet (uncomment only on first run)
     # if not checkpoint_loss:
@@ -554,9 +569,9 @@ with torch.no_grad():
 # plot the taylor coefficients after training
 models.plot_taylor_coefficients(
     x_test.float(),
-    considered_variables_idx=range(input_dims),
+    considered_variables_idx=range(input_dims)[-17:],
     variable_names=all_vars,
-    derivation_order=1,
+    derivation_order=3,
     path='outputs/coefficients.pdf'
 )
 
