@@ -320,7 +320,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
-epoch = 100 #3500
+epoch = 10 #3500
 # checkpoint_loss = False
 
 def save_model(epochs, model, optimizer, criterion):
@@ -354,9 +354,9 @@ all_vars = animal_vars+ele_vars+clu_vars+region_vars+cell_vars
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
-    considered_variables_idx = range(input_dims)[-17:],         # variables to be tracked
+    considered_variables_idx = range(input_dims),         # variables to be tracked
     variable_names = all_vars,                                  # their representative names (plotting)
-    derivation_order=3,                                         # calculates derivation up to 3, including 3
+    derivation_order=1,                                         # calculates derivation up to 3, including 3
     eval_nodes='all',                                           # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
@@ -545,37 +545,38 @@ with torch.no_grad():
     target_names = ["interneuron", "pyramidal", "not identified"]
     
     # must be cpu in order to convert to numpy 
-    X = x_test.cpu()
-    analysis = discrim.LinearDiscriminantAnalysis()
-    data_plot = analysis.fit(X, y).transform(X)
+    # X = x_test.cpu()
+    # analysis = discrim.LinearDiscriminantAnalysis()
+    # data_plot = analysis.fit(X, y).transform(X)
 
     # create LDA plot
-    plt.figure()
-    colors = ["red", "blue", "green"]
-    lw = 2
+    # plt.figure()
+    # colors = ["red", "blue", "green"]
+    # lw = 2
 
     # plotting
-    for color, i, target_name in zip(colors, [0, 1, 2], target_names):
-        plt.scatter(data_plot[y == i, 0], data_plot[y == i, 1], alpha=0.8, color=color, label=target_name)
-    plt.legend(loc="best", shadow=False, scatterpoints=1)
+    # for color, i, target_name in zip(colors, [0, 1, 2], target_names):
+    #     plt.scatter(data_plot[y == i, 0], data_plot[y == i, 1], alpha=0.8, color=color, label=target_name)
+    # plt.legend(loc="best", shadow=False, scatterpoints=1)
 
-    plt.show()
+    # plt.show()
 
     # confusion matrix
     confmat = met.confusion_matrix(expected_class, predicted_class)
-    # fig, ax = plt.subplots()
+    fig, ax = plt.subplots()
     print(confmat)
 
 # plot the taylor coefficients after training
 models.plot_taylor_coefficients(
     x_test.float(),
-    considered_variables_idx=range(input_dims)[-17:],
+    considered_variables_idx=range(input_dims),
     variable_names=all_vars,
-    derivation_order=3,
-    path='outputs/coefficients.pdf'
+    derivation_order=1,
+    path='outputs/ohe_coefficients.pdf'
 )
 
 # plot the saved checkpoints for the TCA model
-models.plot_checkpoints(path='outputs/tc_training.pdf')
+models.plot_checkpoints(path='outputs/ohe_tc_training.pdf')
+
 
 print('done!')
