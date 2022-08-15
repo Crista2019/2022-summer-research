@@ -354,10 +354,10 @@ all_vars = animal_vars+ele_vars+clu_vars+region_vars+cell_vars
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
-    considered_variables_idx = range(input_dims),         # variables to be tracked
+    considered_variables_idx = range(input_dims),               # variables to be tracked
     variable_names = all_vars,                                  # their representative names (plotting)
-    derivation_order=3,                                         # calculates derivation up to 3, including 3
-    eval_nodes='all',                                           # computes TCs based on specified output node(s)
+    derivation_order=1,                                         # calculates derivation up to 3, including 3
+    eval_nodes=[0,1,2,(0,1),'all'],                             # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
 
@@ -571,8 +571,8 @@ models.plot_taylor_coefficients(
     x_test.float(),
     considered_variables_idx=range(input_dims),
     variable_names=all_vars,
-    derivation_order=3,
-    eval_nodes="all",
+    derivation_order=1,
+    eval_nodes=[0,1,2,(0,1),'all'],
     eval_only_max_node=False,
     sorted=True,
     number_of_tc_per_plot=20,
