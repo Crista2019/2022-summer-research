@@ -320,7 +320,7 @@ if torch.cuda.is_available():
 learning_rate = 1e-3
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(models.parameters(), lr=learning_rate, momentum=0.9)
-epoch = 3500 #3500
+epoch = 10 #3500
 # checkpoint_loss = False
 
 def save_model(epochs, model, optimizer, criterion):
@@ -354,9 +354,9 @@ all_vars = animal_vars+ele_vars+clu_vars+region_vars+cell_vars
 
 models.setup_tc_checkpoints(
     number_of_variables_in_data = input_dims,                   # dimension of your model input
-    considered_variables_idx = range(input_dims),               # variables to be tracked
+    considered_variables_idx = range(input_dims)[:10],               # variables to be tracked
     variable_names = all_vars,                                  # their representative names (plotting)
-    derivation_order=1,                                         # calculates derivation up to 3, including 3
+    derivation_order=3,                                         # calculates derivation up to 3, including 3
     eval_nodes=[0,1,2,(0,1),'all'],                             # computes TCs based on specified output node(s)
     eval_only_max_node=False                                    # compute TCs based on the output node with the highest value
 )
@@ -437,7 +437,7 @@ ax1.scatter(np.arange(len(eval_losses)), eval_losses, label="evaluation loss")
 ax1.legend()
 plt.tight_layout()
 plt.savefig("outputs/loss.png")
-plt.show()
+# plt.show()
 
 
 def decipher_class(input_data):
@@ -519,7 +519,7 @@ with torch.no_grad():
 
     plt.tight_layout()
     plt.savefig("outputs/disc_hists.png")
-    plt.show()
+    # plt.show()
 
     # analysis that requires the labels to be one node (i.e. the index of the one hot encoded class) rather than 3
     predicted_class = decipher_class(out_data)
@@ -569,18 +569,99 @@ with torch.no_grad():
 # plot the taylor coefficients after training
 models.plot_taylor_coefficients(
     x_test.float(),
-    considered_variables_idx=range(input_dims),
+    considered_variables_idx=range(input_dims)[:10],
     variable_names=all_vars,
-    derivation_order=1,
+    derivation_order=3,
     eval_nodes=[0,1,2,(0,1),'all'],
     eval_only_max_node=False,
     sorted=True,
     number_of_tc_per_plot=20,
-    path='outputs/coefficients.pdf'
+    path='outputs/3rd_order_attempt/coefficients.pdf'
 )
 
 # plot the saved checkpoints for the TCA model
-models.plot_checkpoints(path='outputs/tc_training.pdf')
+models.plot_checkpoints(path='outputs/3rd_order_attempt/tc_training.pdf')
 
 
+# code from
+
+def plot_confusion_matrix(cm,
+                          target_names,
+                          title='Confusion matrix',
+                          cmap=None,
+                          normalize=True):
+    """
+    given a sklearn confusion matrix (cm), make a nice plot
+
+    Arguments
+    ---------
+    cm:           confusion matrix from sklearn.metrics.confusion_matrix
+
+    target_names: given classification classes such as [0, 1, 2]
+                  the class names, for example: ['high', 'medium', 'low']
+
+    title:        the text to display at the top of the matrix
+
+    cmap:         the gradient of the values displayed from matplotlib.pyplot.cm
+                  see http://matplotlib.org/examples/color/colormaps_reference.html
+                  plt.get_cmap('jet') or plt.cm.Blues
+
+    normalize:    If False, plot the raw numbers
+                  If True, plot the proportions
+
+    Usage
+    -----
+    plot_confusion_matrix(cm           = cm,                  # confusion matrix created by
+                                                              # sklearn.metrics.confusion_matrix
+                          normalize    = True,                # show proportions
+                          target_names = y_labels_vals,       # list of names of the classes
+                          title        = best_estimator_name) # title of graph
+
+    Citiation
+    ---------
+    http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
+
+    """
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import itertools
+
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - accuracy
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+
+    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if normalize:
+            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+        else:
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
+    plt.show()
+
+plot_confusion_matrix(confmat, ['interneuron','pyramidal','unlabeled'])
 print('done!')
